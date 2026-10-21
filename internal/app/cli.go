@@ -24,7 +24,7 @@ func Run(ctx context.Context) error {
 		Use:     "appsum [app-name|pid]",
 		Short:   "See an app's CPU usage and physical memory footprint",
 		Long:    "CPU and physical memory footprint for macOS apps and their descendants.\n\nWithout a target, lists app totals, largest footprint first.\nWith an app name or PID, shows its total and full process tree.\nCPU: 100% = one busy core. Memory: physical footprint, never RSS.",
-		Example: "  appsum\n  appsum asklog\n  appsum 7836\n  appsum asklog --watch\n  appsum asklog --json",
+		Example: "  appsum\n  appsum \"<app-name/process-name>\"\n  appsum <pid>\n  appsum \"<app-name/process-name>\" --watch\n  appsum \"<app-name/process-name>\" --json",
 		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if interval < 100*time.Millisecond {

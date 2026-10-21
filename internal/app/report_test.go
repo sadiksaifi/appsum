@@ -8,13 +8,13 @@ import (
 )
 
 func TestProcessTreeTotals(t *testing.T) {
-	main := &Process{PID: 100, PPID: 1, Name: "asklog", Executable: "/Applications/asklog.app/Contents/MacOS/asklog", CPUPercent: new(1.0), FootprintBytes: new(uint64(100))}
+	main := &Process{PID: 100, PPID: 1, Name: "example", Executable: "/Applications/Example.app/Contents/MacOS/example", CPUPercent: new(1.0), FootprintBytes: new(uint64(100))}
 	child := &Process{PID: 101, PPID: 100, Name: "agent", CPUPercent: new(2.0), FootprintBytes: new(uint64(50))}
 	grandchild := &Process{PID: 102, PPID: 101, Name: "other", Executable: "/Applications/Other.app/Contents/MacOS/other", CPUPercent: new(0.5), FootprintBytes: new(uint64(25))}
 	unrelated := &Process{PID: 200, PPID: 1, Name: "unrelated", Executable: "/Applications/Unrelated.app/Contents/MacOS/unrelated", CPUPercent: new(5.0), FootprintBytes: new(uint64(400))}
 	processes := []*Process{main, child, grandchild, unrelated, child}
 
-	report, err := buildReport(processes, "ASKLOG", time.Second)
+	report, err := buildReport(processes, "EXAMPLE", time.Second)
 	require.NoError(t, err)
 	require.Len(t, report.Groups, 1)
 	group := report.Groups[0]
