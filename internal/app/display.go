@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -39,6 +40,11 @@ func (d display) render(report Report) string {
 			var branch func(*Process, int) *tree.Tree
 			branch = func(p *Process, level int) *tree.Tree {
 				name := p.Name
+				if p.Executable != "" {
+					if runtime := filepath.Base(p.Executable); !strings.EqualFold(name, runtime) {
+						name += " (" + runtime + ")"
+					}
+				}
 				if d.verbose {
 					name = p.Command
 					if name == "" {
