@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/shirou/gopsutil/v4/process"
@@ -92,16 +93,21 @@ func collectProcesses(ctx context.Context, interval time.Duration, verbose bool)
 		}
 		snapshot.PPID, _ = p.PpidWithContext(ctx)
 		snapshot.Executable, _ = p.ExeWithContext(ctx)
-		if snapshot.Executable != "" {
-			snapshot.Name = filepath.Base(snapshot.Executable)
+		args, _ := p.CmdlineSliceWithContext(ctx)
+		// argv[0] preserves titles such as "pi"; Exe still identifies Node.
+		if len(args) > 0 && args[0] != "" {
+			snapshot.Name = filepath.Base(args[0])
 		} else {
 			snapshot.Name, _ = p.NameWithContext(ctx)
+		}
+		if snapshot.Name == "" && snapshot.Executable != "" {
+			snapshot.Name = filepath.Base(snapshot.Executable)
 		}
 		if snapshot.Name == "" {
 			snapshot.Name = strconv.Itoa(int(p.Pid))
 		}
 		if verbose {
-			snapshot.Command, _ = p.CmdlineWithContext(ctx)
+			snapshot.Command = strings.Join(args, " ")
 		}
 		result = append(result, snapshot)
 	}
