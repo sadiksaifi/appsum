@@ -2,7 +2,7 @@
 
 See an app's CPU usage and physical memory footprint, with a total followed by its full process tree. For Apple Silicon Macs. Building requires Apple's command-line tools.
 
-<img src="https://github.com/user-attachments/assets/1570acb5-c546-4fd5-bddf-625cb4aaebfc" alt="App totals and a nested process tree showing CPU usage and physical memory footprint" width="100%">
+<img src="https://github.com/user-attachments/assets/28edc867-0f18-41f3-82e2-40dedea1ce37" alt="App totals and a nested process tree showing CPU usage and physical memory footprint" width="100%">
 
 ## Install
 
