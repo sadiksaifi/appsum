@@ -7,6 +7,12 @@ See CPU and memory usage for apps and process trees, with a total followed by ev
 ## Install macOS/Linux
 
 ```sh
+curl -fsSL https://github.com/sadiksaifi/appsum/releases/latest/download/install.sh | sh
+```
+
+Installs to `~/.local/bin`. Or with Go:
+
+```sh
 CGO_ENABLED=0 go install github.com/sadiksaifi/appsum/cmd/appsum@latest
 ```
 
@@ -26,10 +32,11 @@ Exact names take priority over partial matches. CPU 100% means one busy core. ma
 
 | Flag | Default | What it does |
 | --- | --- | --- |
-| `-w`, `--watch` | Off | Refresh in place. Stream snapshots when piped or when the full report cannot fit the terminal height. |
+| `-w`, `--watch` | Off | Refresh in place. Stream snapshots when piped or when the full report cannot fit the terminal size. |
 | `--json` | Off | Output the complete tree as JSON. With `--watch`, emit one JSON object per line. |
 | `-v`, `--verbose` | Off | Show untruncated command lines, or executable paths when the command line is unavailable. |
 | `--interval <duration>` | `1s` | Set the CPU sampling interval, such as `500ms`. Minimum: `100ms`. |
 | `--depth <levels>` | `0` | Limit displayed process levels; `0` shows all. Totals and JSON always include every descendant. |
 | `-h`, `--help` | — | Show usage and examples. |
 | `--version` | — | Show the build version. |
+| `--upgrade` | Off | Update this binary to the latest stable release, verifying its SHA-256 checksum. |
