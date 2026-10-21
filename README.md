@@ -1,16 +1,26 @@
 # appsum
 
+See an app's CPU usage and physical memory footprint, with a total followed by its full process tree. For Apple Silicon Macs. Building requires Apple's command-line tools.
+
 <img src="https://github.com/user-attachments/assets/b25e939b-6305-48b1-89bd-2e6f439aafc9" alt="App totals and a nested process tree showing CPU usage and physical memory footprint" width="100%">
 
-See an app's CPU usage and physical memory footprint, with a total followed by its full process tree.
-For Apple Silicon Macs. Building requires Apple's command-line tools.
+## Install
 
 ```sh
 go install github.com/sadiksaifi/appsum/cmd/appsum@latest
-appsum "<app-name/process-name>" --watch
 ```
 
-## Flags
+## Usage
+
+```sh
+appsum
+appsum "<app-name/process-name>"
+appsum <pid>
+appsum "<app-name/process-name>" --watch
+appsum "<app-name/process-name>" --json
+```
+
+### Flags
 
 | Flag | Default | What it does |
 | --- | --- | --- |
