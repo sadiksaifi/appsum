@@ -36,7 +36,8 @@ func (d display) render(report Report) string {
 		memory := formatMemory(group.FootprintBytes, group.MemoryIncomplete)
 		groupRows := [][]string{{clean(group.Name), "—", cpu, memory}}
 		if d.detail {
-			root := tree.Root(clean(group.Name)).EnumeratorStyle(lipgloss.NewStyle().Foreground(d.colors.Comment).MarginRight(1))
+			branchStyle := lipgloss.NewStyle().Foreground(d.colors.Comment).PaddingRight(1)
+			root := tree.Root(clean(group.Name)).EnumeratorStyle(branchStyle).IndenterStyle(branchStyle)
 			var branch func(*Process, int) *tree.Tree
 			branch = func(p *Process, level int) *tree.Tree {
 				name := p.Name
