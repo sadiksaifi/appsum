@@ -10,11 +10,7 @@ See CPU and memory usage for apps and process trees, with a total followed by ev
 curl -fsSL https://github.com/sadiksaifi/appsum/releases/latest/download/install.sh | sh
 ```
 
-Installs to `~/.local/bin`. Or with Go:
-
-```sh
-CGO_ENABLED=0 go install github.com/sadiksaifi/appsum/cmd/appsum@latest
-```
+Installs to `~/.local/bin`.
 
 ## Usage
 
