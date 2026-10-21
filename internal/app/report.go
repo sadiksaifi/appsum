@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"fmt"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -13,20 +12,20 @@ import (
 
 // Process contains this process's measurements, never its descendants' totals.
 type Process struct {
-	PID            int32      `json:"pid"`
-	PPID           int32      `json:"ppid"`
-	Name           string     `json:"name"`
-	Executable     string     `json:"executable,omitempty"`
-	Command        string     `json:"command,omitempty"`
-	CPUPercent     *float64   `json:"cpu_percent"`
-	FootprintBytes *uint64    `json:"footprint_bytes"`
-	Children       []*Process `json:"children,omitempty"`
+	PID         int32      `json:"pid"`
+	PPID        int32      `json:"ppid"`
+	Name        string     `json:"name"`
+	Executable  string     `json:"executable,omitempty"`
+	Command     string     `json:"command,omitempty"`
+	CPUPercent  *float64   `json:"cpu_percent"`
+	MemoryBytes *uint64    `json:"memory_bytes"`
+	Children    []*Process `json:"children,omitempty"`
 }
 
 type Group struct {
 	Name             string     `json:"name"`
 	CPUPercent       *float64   `json:"cpu_percent"`
-	FootprintBytes   *uint64    `json:"footprint_bytes"`
+	MemoryBytes      *uint64    `json:"memory_bytes"`
 	CPUIncomplete    bool       `json:"cpu_incomplete"`
 	MemoryIncomplete bool       `json:"memory_incomplete"`
 	ProcessCount     int        `json:"process_count"`
@@ -40,38 +39,9 @@ type Report struct {
 	Groups        []Group   `json:"groups"`
 }
 
-func appBundle(path string) string {
-	if i := strings.Index(path, ".app/"); i >= 0 {
-		return path[:i+4]
-	}
-	return ""
-}
-
 type groupKey struct{ id, name string }
 
-// defaultGroup keeps macOS app bundles together, including reparented helpers.
-// Standalone Linux trees start immediately below init or at a missing parent.
-func defaultGroup(p *Process, byPID map[int32]*Process) groupKey {
-	var bundle string
-	root := p
-	seen := make(map[int32]bool)
-	for a := p; a != nil && a.PID > 1 && !seen[a.PID]; a = byPID[a.PPID] {
-		seen[a.PID] = true
-		root = a
-		if path := appBundle(a.Executable); path != "" {
-			bundle = path
-		}
-	}
-	if bundle != "" {
-		return groupKey{bundle, strings.TrimSuffix(filepath.Base(bundle), ".app")}
-	}
-	if runtime.GOOS == "linux" {
-		return groupKey{strconv.Itoa(int(root.PID)), root.Name}
-	}
-	return groupKey{}
-}
-
-func selectGroups(byPID map[int32]*Process, target string) (map[groupKey][]*Process, error) {
+func selectGroups(byPID map[int32]*Process, target string, adapter platformAdapter) (map[groupKey][]*Process, error) {
 	members := make(map[groupKey][]*Process)
 	roots := make(map[int32]bool)
 	pid, pidErr := strconv.ParseInt(target, 10, 32)
@@ -85,18 +55,27 @@ func selectGroups(byPID map[int32]*Process, target string) (map[groupKey][]*Proc
 		roots[int32(pid)] = true
 	} else {
 		query := strings.ToLower(target)
-		for _, p := range byPID {
-			key := defaultGroup(p, byPID)
-			if key.id != "" && strings.Contains(strings.ToLower(key.name), query) {
-				members[key] = append(members[key], p)
+		for _, exact := range []bool{true, false} {
+			matches := func(name string) bool {
+				name = strings.ToLower(name)
+				return target == "" || name == query || (!exact && strings.Contains(name, query))
 			}
-		}
-		if target == "" || len(members) != 0 {
-			return members, nil
-		}
-		for _, p := range byPID {
-			if strings.Contains(strings.ToLower(p.Name), query) || (p.Executable != "" && strings.Contains(strings.ToLower(filepath.Base(p.Executable)), query)) {
-				roots[p.PID] = true
+			for _, p := range byPID {
+				key := adapter.group(p, byPID)
+				if key.id != "" && matches(key.name) {
+					members[key] = append(members[key], p)
+				}
+			}
+			if target == "" || len(members) != 0 {
+				return members, nil
+			}
+			for _, p := range byPID {
+				if matches(p.Name) || (p.Executable != "" && matches(filepath.Base(p.Executable))) {
+					roots[p.PID] = true
+				}
+			}
+			if len(roots) != 0 {
+				break
 			}
 		}
 	}
@@ -121,21 +100,21 @@ func selectGroups(byPID map[int32]*Process, target string) (map[groupKey][]*Proc
 }
 
 // buildReport assigns every PID to one group before calculating totals.
-func buildReport(processes []*Process, target string, interval time.Duration) (Report, error) {
+func buildReport(processes []*Process, target string, interval time.Duration, adapter platformAdapter) (Report, error) {
 	byPID := make(map[int32]*Process, len(processes))
 	for _, p := range processes {
 		p.Children = nil
 		byPID[p.PID] = p
 	}
 
-	members, err := selectGroups(byPID, target)
+	members, err := selectGroups(byPID, target, adapter)
 	if err != nil {
 		return Report{}, err
 	}
 
 	report := Report{
 		SampledAt: time.Now().UTC(), SampleSeconds: interval.Seconds(),
-		MemoryMetric: "physical_footprint", Groups: []Group{},
+		MemoryMetric: memoryMetric, Groups: []Group{},
 	}
 	for owner, groupProcesses := range members {
 		g := Group{Name: owner.name, ProcessCount: len(groupProcesses), Processes: []*Process{}}
@@ -150,13 +129,13 @@ func buildReport(processes []*Process, target string, interval time.Duration) (R
 				}
 				*g.CPUPercent += *p.CPUPercent
 			}
-			if p.FootprintBytes == nil {
+			if p.MemoryBytes == nil {
 				g.MemoryIncomplete = true
 			} else {
-				if g.FootprintBytes == nil {
-					g.FootprintBytes = new(uint64)
+				if g.MemoryBytes == nil {
+					g.MemoryBytes = new(uint64)
 				}
-				*g.FootprintBytes += *p.FootprintBytes
+				*g.MemoryBytes += *p.MemoryBytes
 			}
 		}
 		// A cycle cannot occur in a live process tree. Drop malformed parent
@@ -186,11 +165,11 @@ func buildReport(processes []*Process, target string, interval time.Duration) (R
 	}
 	slices.SortFunc(report.Groups, func(a, b Group) int {
 		var left, right uint64
-		if a.FootprintBytes != nil {
-			left = *a.FootprintBytes
+		if a.MemoryBytes != nil {
+			left = *a.MemoryBytes
 		}
-		if b.FootprintBytes != nil {
-			right = *b.FootprintBytes
+		if b.MemoryBytes != nil {
+			right = *b.MemoryBytes
 		}
 		if order := cmp.Compare(right, left); order != 0 {
 			return order

@@ -21,9 +21,9 @@ func Run(ctx context.Context) error {
 	var depth int
 	var interval time.Duration
 	cmd := &cobra.Command{
-		Use:     "appsum [app-name|pid]",
-		Short:   "See an app's CPU usage and physical memory footprint",
-		Long:    "CPU and physical memory footprint for macOS apps and their descendants.\n\nWithout a target, lists app totals, largest footprint first.\nWith an app name or PID, shows its total and full process tree.\nCPU: 100% = one busy core. Memory: physical footprint, never RSS.",
+		Use:     "appsum [app-name|process-name|pid]",
+		Short:   "See app and process-tree CPU and memory usage",
+		Long:    "CPU and memory for apps, services, and their descendants.\n\nWithout a target, lists group totals, largest memory usage first.\nWith an app name, process name, or PID, shows its total and full process tree.\nCPU: 100% = one busy core. Memory: " + memoryLabel + ", never RSS.",
 		Example: "  appsum\n  appsum \"<app-name/process-name>\"\n  appsum <pid>\n  appsum \"<app-name/process-name>\" --watch\n  appsum \"<app-name/process-name>\" --json",
 		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -33,16 +33,20 @@ func Run(ctx context.Context) error {
 			if depth < 0 {
 				return fmt.Errorf("--depth must be zero or positive")
 			}
+			adapter, err := newPlatformAdapter()
+			if err != nil {
+				return err
+			}
 			target := ""
 			if len(args) != 0 {
 				target = args[0]
 			}
 			sample := func(ctx context.Context) (Report, error) {
-				processes, err := collectProcesses(ctx, interval, verbose)
+				processes, err := collectProcesses(ctx, interval, verbose, adapter)
 				if err != nil {
 					return Report{}, err
 				}
-				return buildReport(processes, target, interval)
+				return buildReport(processes, target, interval, adapter)
 			}
 			interactive := term.IsTerminal(os.Stdout.Fd()) && !jsonOutput
 			view := display{

@@ -1,14 +1,18 @@
 # appsum
 
-See an app's CPU usage and physical memory footprint, with a total followed by its full process tree. For Apple Silicon Macs. Building requires Apple's command-line tools.
+See CPU and memory usage for apps and process trees, with a total followed by every descendant. macOS reports physical footprint; Linux reports proportional set size (PSS).
 
 <img src="https://github.com/user-attachments/assets/28edc867-0f18-41f3-82e2-40dedea1ce37" alt="App totals and a nested process tree showing CPU usage and physical memory footprint" width="100%">
 
 ## Install
 
+Supports macOS and Linux on x86_64 and arm64. No C compiler or Apple developer tools are required.
+
 ```sh
-go install github.com/sadiksaifi/appsum/cmd/appsum@latest
+CGO_ENABLED=0 go install github.com/sadiksaifi/appsum/cmd/appsum@latest
 ```
+
+Linux builds are tested on both architectures. Intel Mac builds are cross-compiled but not yet tested on Intel hardware.
 
 ## Usage
 
@@ -19,6 +23,8 @@ appsum <pid>
 appsum "<app-name/process-name>" --watch
 appsum "<app-name/process-name>" --json
 ```
+
+Exact names take priority over partial matches. CPU 100% means one busy core. macOS footprint and Linux PSS are different accounting metrics; RSS is never substituted. JSON identifies the metric with `memory_metric` and reports values in `memory_bytes`.
 
 ### Flags
 

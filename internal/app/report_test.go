@@ -8,52 +8,56 @@ import (
 )
 
 func TestProcessTreeTotals(t *testing.T) {
-	main := &Process{PID: 100, PPID: 1, Name: "example", Executable: "/Applications/Example.app/Contents/MacOS/example", CPUPercent: new(1.0), FootprintBytes: new(uint64(100))}
-	child := &Process{PID: 101, PPID: 100, Name: "worker", CPUPercent: new(2.0), FootprintBytes: new(uint64(50))}
-	grandchild := &Process{PID: 102, PPID: 101, Name: "worker-child", Executable: "/Applications/Other.app/Contents/MacOS/other", CPUPercent: new(0.5), FootprintBytes: new(uint64(25))}
-	unrelated := &Process{PID: 200, PPID: 1, Name: "unrelated", Executable: "/Applications/Unrelated.app/Contents/MacOS/unrelated", CPUPercent: new(5.0), FootprintBytes: new(uint64(400))}
+	adapter, err := newPlatformAdapter()
+	require.NoError(t, err)
+	main := &Process{PID: 100, PPID: 1, Name: "example", Executable: "/Applications/Example.app/Contents/MacOS/example", CPUPercent: new(1.0), MemoryBytes: new(uint64(100))}
+	child := &Process{PID: 101, PPID: 100, Name: "worker", CPUPercent: new(2.0), MemoryBytes: new(uint64(50))}
+	grandchild := &Process{PID: 102, PPID: 101, Name: "worker-child", Executable: "/Applications/Other.app/Contents/MacOS/other", CPUPercent: new(0.5), MemoryBytes: new(uint64(25))}
+	unrelated := &Process{PID: 200, PPID: 1, Name: "worker-other", Executable: "/Applications/Unrelated.app/Contents/MacOS/unrelated", CPUPercent: new(5.0), MemoryBytes: new(uint64(400))}
 	processes := []*Process{main, child, grandchild, unrelated, child}
 
-	report, err := buildReport(processes, "EXAMPLE", time.Second)
+	report, err := buildReport(processes, "EXAMPLE", time.Second, adapter)
 	require.NoError(t, err)
 	require.Len(t, report.Groups, 1)
 	group := report.Groups[0]
 	require.Equal(t, 3, group.ProcessCount)
 	require.Equal(t, new(3.5), group.CPUPercent)
-	require.Equal(t, new(uint64(175)), group.FootprintBytes)
+	require.Equal(t, new(uint64(175)), group.MemoryBytes)
 	require.Equal(t, int32(102), group.Processes[0].Children[0].Children[0].PID)
 
-	report, err = buildReport(processes, "101", time.Second)
+	report, err = buildReport(processes, "101", time.Second, adapter)
 	require.NoError(t, err)
 	require.Len(t, report.Groups, 1)
 	require.Equal(t, 2, report.Groups[0].ProcessCount)
 	require.Equal(t, new(2.5), report.Groups[0].CPUPercent)
-	require.Equal(t, new(uint64(75)), report.Groups[0].FootprintBytes)
+	require.Equal(t, new(uint64(75)), report.Groups[0].MemoryBytes)
 
-	report, err = buildReport(processes, "WORKER", time.Second)
+	report, err = buildReport(processes, "WORKER", time.Second, adapter)
 	require.NoError(t, err)
 	require.Len(t, report.Groups, 1)
 	require.Equal(t, "worker", report.Groups[0].Name)
 	require.Equal(t, 2, report.Groups[0].ProcessCount)
-	require.Equal(t, new(uint64(75)), report.Groups[0].FootprintBytes)
+	require.Equal(t, new(uint64(75)), report.Groups[0].MemoryBytes)
 }
 
 func TestUnavailableMeasurementsArePartial(t *testing.T) {
+	adapter, err := newPlatformAdapter()
+	require.NoError(t, err)
 	report, err := buildReport([]*Process{
-		{PID: 100, PPID: 1, Name: "app", Executable: "/Applications/App.app/Contents/MacOS/app", CPUPercent: new(1.0), FootprintBytes: new(uint64(100))},
+		{PID: 100, PPID: 1, Name: "app", Executable: "/Applications/App.app/Contents/MacOS/app", CPUPercent: new(1.0), MemoryBytes: new(uint64(100))},
 		{PID: 101, PPID: 100, Name: "protected"},
-	}, "app", time.Second)
+	}, "app", time.Second, adapter)
 	require.NoError(t, err)
 	require.Len(t, report.Groups, 1)
 	group := report.Groups[0]
 	require.True(t, group.CPUIncomplete)
 	require.True(t, group.MemoryIncomplete)
 	require.Equal(t, new(1.0), group.CPUPercent)
-	require.Equal(t, new(uint64(100)), group.FootprintBytes)
-	require.Nil(t, group.Processes[0].Children[0].FootprintBytes)
+	require.Equal(t, new(uint64(100)), group.MemoryBytes)
+	require.Nil(t, group.Processes[0].Children[0].MemoryBytes)
 
-	report, err = buildReport([]*Process{{PID: 200, Name: "unreadable"}}, "200", time.Second)
+	report, err = buildReport([]*Process{{PID: 200, Name: "unreadable"}}, "200", time.Second, adapter)
 	require.NoError(t, err)
 	require.Nil(t, report.Groups[0].CPUPercent)
-	require.Nil(t, report.Groups[0].FootprintBytes)
+	require.Nil(t, report.Groups[0].MemoryBytes)
 }

@@ -33,7 +33,7 @@ func (d display) render(report Report) string {
 		partial = partial || group.CPUIncomplete || group.MemoryIncomplete
 		processCount += group.ProcessCount
 		cpu := formatCPU(group.CPUPercent, group.CPUIncomplete)
-		memory := formatMemory(group.FootprintBytes, group.MemoryIncomplete)
+		memory := formatMemory(group.MemoryBytes, group.MemoryIncomplete)
 		groupRows := [][]string{{clean(group.Name), "—", cpu, memory}}
 		if d.detail {
 			branchStyle := lipgloss.NewStyle().Foreground(d.colors.Comment).PaddingRight(1)
@@ -53,7 +53,7 @@ func (d display) render(report Report) string {
 					}
 				}
 				cpu := formatCPU(p.CPUPercent, false)
-				memory := formatMemory(p.FootprintBytes, false)
+				memory := formatMemory(p.MemoryBytes, false)
 				groupRows = append(groupRows, []string{"", strconv.Itoa(int(p.PID)), cpu, memory})
 				node := tree.Root(clean(name))
 				if d.depth == 0 || level < d.depth {
@@ -115,7 +115,7 @@ func (d display) render(report Report) string {
 			}
 			return style
 		})
-	footer := fmt.Sprintf("Apps: %d · Processes: %d · physical footprint · %s", len(report.Groups), processCount, report.SampledAt.Local().Format("15:04:05"))
+	footer := fmt.Sprintf("Groups: %d · Processes: %d · %s · %s", len(report.Groups), processCount, memoryLabel, report.SampledAt.Local().Format("15:04:05"))
 	if partial {
 		footer += "\n≥ partial total · — unavailable · no RSS substitution"
 	}

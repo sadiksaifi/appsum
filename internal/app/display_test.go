@@ -11,10 +11,12 @@ import (
 )
 
 func TestProcessRuntimeLabels(t *testing.T) {
+	adapter, err := newPlatformAdapter()
+	require.NoError(t, err)
 	report, err := buildReport([]*Process{
 		{PID: 1, Name: "pi", Executable: "/usr/local/bin/node"},
 		{PID: 2, PPID: 1, Name: "zsh", Executable: "/bin/zsh"},
-	}, "1", time.Second)
+	}, "1", time.Second, adapter)
 	require.NoError(t, err)
 	view := display{detail: true, colors: fang.DefaultColorScheme(lipgloss.LightDark(true))}
 	output := ansi.Strip(view.render(report))

@@ -64,7 +64,7 @@ func (m terminal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m terminal) View() tea.View {
 	if m.report == nil && m.err == nil {
-		return tea.NewView(m.spinner.View() + " Measuring CPU and physical footprint…")
+		return tea.NewView(m.spinner.View() + " Measuring CPU and " + memoryLabel + "…")
 	}
 	if m.report == nil || !m.watch || m.overflow {
 		return tea.NewView("")
