@@ -37,6 +37,15 @@ func (m terminal) Init() tea.Cmd {
 	return tea.Batch(m.spinner.Tick, m.collect)
 }
 
+func (m terminal) overflows() bool {
+	if m.report == nil {
+		return false
+	}
+	rendered := m.display.render(*m.report)
+	return (m.display.width > 0 && lipgloss.Width(rendered) > m.display.width) ||
+		(m.height > 0 && lipgloss.Height(rendered)+1 >= m.height)
+}
+
 func (m terminal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case sampleResult:
@@ -45,13 +54,17 @@ func (m terminal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 		m.report = &msg.report
-		m.overflow = m.height > 0 && lipgloss.Height(m.display.render(msg.report))+1 >= m.height
+		m.overflow = m.overflows()
 		if !m.watch || m.overflow {
 			return m, tea.Quit
 		}
 		return m, m.collect
 	case tea.WindowSizeMsg:
 		m.display.width, m.height = msg.Width, msg.Height
+		m.overflow = m.overflows()
+		if m.watch && m.overflow {
+			return m, tea.Quit
+		}
 	case spinner.TickMsg:
 		if m.report == nil {
 			var cmd tea.Cmd
@@ -92,7 +105,7 @@ func runTerminal(ctx context.Context, sample func(context.Context) (Report, erro
 		}
 	}
 	if final.overflow && watch && ctx.Err() == nil {
-		if _, err := fmt.Fprintln(os.Stderr, "Report exceeds terminal height; streaming full snapshots. Use --depth for in-place updates."); err != nil {
+		if _, err := fmt.Fprintln(os.Stderr, "Report exceeds terminal size; streaming full snapshots. Widen the terminal, use --depth, or omit --verbose for in-place updates."); err != nil {
 			return err
 		}
 		for ctx.Err() == nil {
