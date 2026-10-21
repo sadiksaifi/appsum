@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"fmt"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -46,9 +47,80 @@ func appBundle(path string) string {
 	return ""
 }
 
+type groupKey struct{ id, name string }
+
+// defaultGroup keeps macOS app bundles together, including reparented helpers.
+// Standalone Linux trees start immediately below init or at a missing parent.
+func defaultGroup(p *Process, byPID map[int32]*Process) groupKey {
+	var bundle string
+	root := p
+	seen := make(map[int32]bool)
+	for a := p; a != nil && a.PID > 1 && !seen[a.PID]; a = byPID[a.PPID] {
+		seen[a.PID] = true
+		root = a
+		if path := appBundle(a.Executable); path != "" {
+			bundle = path
+		}
+	}
+	if bundle != "" {
+		return groupKey{bundle, strings.TrimSuffix(filepath.Base(bundle), ".app")}
+	}
+	if runtime.GOOS == "linux" {
+		return groupKey{strconv.Itoa(int(root.PID)), root.Name}
+	}
+	return groupKey{}
+}
+
+func selectGroups(byPID map[int32]*Process, target string) (map[groupKey][]*Process, error) {
+	members := make(map[groupKey][]*Process)
+	roots := make(map[int32]bool)
+	pid, pidErr := strconv.ParseInt(target, 10, 32)
+	if pidErr == nil {
+		if pid <= 0 {
+			return nil, fmt.Errorf("PID must be positive")
+		}
+		if byPID[int32(pid)] == nil {
+			return nil, fmt.Errorf("process %d is not running or cannot be read", pid)
+		}
+		roots[int32(pid)] = true
+	} else {
+		query := strings.ToLower(target)
+		for _, p := range byPID {
+			key := defaultGroup(p, byPID)
+			if key.id != "" && strings.Contains(strings.ToLower(key.name), query) {
+				members[key] = append(members[key], p)
+			}
+		}
+		if target == "" || len(members) != 0 {
+			return members, nil
+		}
+		for _, p := range byPID {
+			if strings.Contains(strings.ToLower(p.Name), query) || (p.Executable != "" && strings.Contains(strings.ToLower(filepath.Base(p.Executable)), query)) {
+				roots[p.PID] = true
+			}
+		}
+	}
+	for _, p := range byPID {
+		var root *Process
+		seen := make(map[int32]bool)
+		for a := p; a != nil && !seen[a.PID]; a = byPID[a.PPID] {
+			seen[a.PID] = true
+			if roots[a.PID] {
+				root = a // Use the outermost match so overlapping trees count once.
+			}
+		}
+		if root != nil {
+			key := groupKey{strconv.Itoa(int(root.PID)), root.Name}
+			members[key] = append(members[key], p)
+		}
+	}
+	if len(members) == 0 {
+		return nil, fmt.Errorf("no running app or process matches %q", target)
+	}
+	return members, nil
+}
+
 // buildReport assigns every PID to one group before calculating totals.
-// A descendant belongs to the outermost app in its ancestry, even if it is
-// another app or its executable lives outside that app's bundle.
 func buildReport(processes []*Process, target string, interval time.Duration) (Report, error) {
 	byPID := make(map[int32]*Process, len(processes))
 	for _, p := range processes {
@@ -56,44 +128,9 @@ func buildReport(processes []*Process, target string, interval time.Duration) (R
 		byPID[p.PID] = p
 	}
 
-	selectedPID, pidErr := strconv.ParseInt(target, 10, 32)
-	if pidErr == nil && selectedPID <= 0 {
-		return Report{}, fmt.Errorf("PID must be positive")
-	}
-	if pidErr == nil && byPID[int32(selectedPID)] == nil {
-		return Report{}, fmt.Errorf("process %d is not running or cannot be read", selectedPID)
-	}
-
-	members := make(map[string][]*Process)
-	names := make(map[string]string)
-	for _, p := range byPID {
-		owner := ""
-		seen := make(map[int32]bool)
-		for ancestor := p; ancestor != nil && !seen[ancestor.PID]; ancestor = byPID[ancestor.PPID] {
-			seen[ancestor.PID] = true
-			if pidErr == nil && ancestor.PID == int32(selectedPID) {
-				owner = "pid:" + target
-				break
-			}
-			if bundle := appBundle(ancestor.Executable); bundle != "" {
-				owner = bundle
-			}
-		}
-		if pidErr == nil && owner != "pid:"+target {
-			continue
-		}
-		if owner == "" {
-			continue
-		}
-		name := strings.TrimSuffix(filepath.Base(owner), ".app")
-		if pidErr == nil {
-			name = byPID[int32(selectedPID)].Name
-		}
-		if pidErr != nil && !strings.Contains(strings.ToLower(name), strings.ToLower(target)) {
-			continue
-		}
-		members[owner] = append(members[owner], p)
-		names[owner] = name
+	members, err := selectGroups(byPID, target)
+	if err != nil {
+		return Report{}, err
 	}
 
 	report := Report{
@@ -101,7 +138,7 @@ func buildReport(processes []*Process, target string, interval time.Duration) (R
 		MemoryMetric: "physical_footprint", Groups: []Group{},
 	}
 	for owner, groupProcesses := range members {
-		g := Group{Name: names[owner], ProcessCount: len(groupProcesses), Processes: []*Process{}}
+		g := Group{Name: owner.name, ProcessCount: len(groupProcesses), Processes: []*Process{}}
 		inGroup := make(map[int32]bool, len(groupProcesses))
 		for _, p := range groupProcesses {
 			inGroup[p.PID] = true
@@ -160,9 +197,6 @@ func buildReport(processes []*Process, target string, interval time.Duration) (R
 		}
 		return strings.Compare(a.Name, b.Name)
 	})
-	if target != "" && len(report.Groups) == 0 {
-		return Report{}, fmt.Errorf("no running app matches %q", target)
-	}
 	return report, nil
 }
 

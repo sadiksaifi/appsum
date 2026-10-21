@@ -9,8 +9,8 @@ import (
 
 func TestProcessTreeTotals(t *testing.T) {
 	main := &Process{PID: 100, PPID: 1, Name: "example", Executable: "/Applications/Example.app/Contents/MacOS/example", CPUPercent: new(1.0), FootprintBytes: new(uint64(100))}
-	child := &Process{PID: 101, PPID: 100, Name: "agent", CPUPercent: new(2.0), FootprintBytes: new(uint64(50))}
-	grandchild := &Process{PID: 102, PPID: 101, Name: "other", Executable: "/Applications/Other.app/Contents/MacOS/other", CPUPercent: new(0.5), FootprintBytes: new(uint64(25))}
+	child := &Process{PID: 101, PPID: 100, Name: "worker", CPUPercent: new(2.0), FootprintBytes: new(uint64(50))}
+	grandchild := &Process{PID: 102, PPID: 101, Name: "worker-child", Executable: "/Applications/Other.app/Contents/MacOS/other", CPUPercent: new(0.5), FootprintBytes: new(uint64(25))}
 	unrelated := &Process{PID: 200, PPID: 1, Name: "unrelated", Executable: "/Applications/Unrelated.app/Contents/MacOS/unrelated", CPUPercent: new(5.0), FootprintBytes: new(uint64(400))}
 	processes := []*Process{main, child, grandchild, unrelated, child}
 
@@ -28,6 +28,13 @@ func TestProcessTreeTotals(t *testing.T) {
 	require.Len(t, report.Groups, 1)
 	require.Equal(t, 2, report.Groups[0].ProcessCount)
 	require.Equal(t, new(2.5), report.Groups[0].CPUPercent)
+	require.Equal(t, new(uint64(75)), report.Groups[0].FootprintBytes)
+
+	report, err = buildReport(processes, "WORKER", time.Second)
+	require.NoError(t, err)
+	require.Len(t, report.Groups, 1)
+	require.Equal(t, "worker", report.Groups[0].Name)
+	require.Equal(t, 2, report.Groups[0].ProcessCount)
 	require.Equal(t, new(uint64(75)), report.Groups[0].FootprintBytes)
 }
 
