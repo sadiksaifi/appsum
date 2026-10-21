@@ -1,0 +1,32 @@
+[tools]
+go = "1.27.3"
+golangci-lint = "2.15.0"
+
+[tasks.start]
+description = "Run appsum from source"
+run = "go run ./cmd/appsum"
+raw = true
+
+[tasks.build]
+description = "Build the appsum binary"
+run = "go build -o bin/appsum ./cmd/appsum"
+
+[tasks.install]
+description = "Install appsum into ~/.local/bin"
+run = 'GOBIN="$HOME/.local/bin" go install ./cmd/appsum'
+
+[tasks.fmt]
+description = "Format Go source and imports"
+run = "golangci-lint fmt"
+
+[tasks.lint]
+description = "Check Go source"
+run = "golangci-lint run"
+
+[tasks.test]
+description = "Test process-tree grouping and totals"
+run = "go test ./..."
+
+[tasks.check]
+description = "Run lint and tests"
+depends = ["lint", "test"]

@@ -1,0 +1,15 @@
+# Build and diagnostic output
+/appsum
+/bin/
+/dist/
+*.test
+coverage.out
+*.prof
+
+# Local environment and editor files
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/
+.DS_Store
