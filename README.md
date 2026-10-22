@@ -6,6 +6,14 @@ See CPU and memory usage for apps and process trees, with a total followed by ev
 
 ## Install macOS/Linux
 
+### Homebrew
+
+```sh
+brew install sadiksaifi/tap/appsum
+```
+
+### curl
+
 ```sh
 curl -fsSL https://github.com/sadiksaifi/appsum/releases/latest/download/install.sh | sh
 ```
@@ -35,4 +43,4 @@ Exact names take priority over partial matches. CPU 100% means one busy core. ma
 | `--depth <levels>` | `0` | Limit displayed process levels; `0` shows all. Totals and JSON always include every descendant. |
 | `-h`, `--help` | — | Show usage and examples. |
 | `-v`, `--version` | — | Show the build version. |
-| `--upgrade` | Off | Update this binary to the latest stable release, verifying its SHA-256 checksum. |
+| `--upgrade` | Off | Upgrade through Homebrew for Homebrew installations; otherwise update this binary to the latest stable release with SHA-256 verification. |

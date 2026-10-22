@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"runtime/debug"
 	"time"
 
@@ -25,8 +28,6 @@ func currentVersion() string {
 }
 
 func upgrade(ctx context.Context, out io.Writer) error {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-	defer cancel()
 	updater, err := selfupdate.NewUpdater(selfupdate.Config{
 		Validator: &selfupdate.ChecksumValidator{UniqueFilename: "checksums.txt"},
 	})
@@ -41,6 +42,28 @@ func upgrade(ctx context.Context, out io.Writer) error {
 }
 
 func upgradeBinary(ctx context.Context, out io.Writer, current, path string, updater *selfupdate.Updater) error {
+	// ExecutablePath resolves bin/ and opt/ symlinks to the installed keg.
+	keg := filepath.Dir(filepath.Dir(path))
+	rack := filepath.Dir(keg)
+	cellar := filepath.Dir(rack)
+	if filepath.Base(filepath.Dir(path)) == "bin" && filepath.Base(rack) == "appsum" && filepath.Base(cellar) == "Cellar" {
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+		defer cancel()
+		if _, err := fmt.Fprintln(out, "Homebrew installation detected; upgrading with Homebrew..."); err != nil {
+			return err
+		}
+		// Use the owning Homebrew, even when PATH selects another installation.
+		brew := filepath.Join(filepath.Dir(cellar), "bin", "brew")
+		cmd := exec.CommandContext(ctx, brew, "upgrade", "sadiksaifi/tap/appsum")
+		cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, out, out
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("brew upgrade failed (run %s upgrade sadiksaifi/tap/appsum to retry): %w", brew, err)
+		}
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
 	installed, err := semver.NewVersion(current)
 	if err != nil {
 		return fmt.Errorf("cannot upgrade a development build; install an official release first")

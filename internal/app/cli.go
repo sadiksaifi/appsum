@@ -93,7 +93,7 @@ func Run(ctx context.Context) error {
 			}
 		},
 	}
-	cmd.Flags().BoolVar(&upgradeRequested, "upgrade", false, "Upgrade to the latest stable release with SHA-256 verification")
+	cmd.Flags().BoolVar(&upgradeRequested, "upgrade", false, "Upgrade through Homebrew or download the latest stable release with SHA-256 verification")
 	cmd.Flags().BoolVarP(&watch, "watch", "w", false, "Refresh in place; stream snapshots when piped")
 	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Print JSON; --watch emits newline-delimited JSON")
 	cmd.Flags().BoolVar(&verbose, "verbose", false, "Show full names, executable paths, and command lines")
