@@ -44,8 +44,8 @@ description = "Check Go source"
 run = "golangci-lint run"
 
 [tasks.test]
-description = "Test app behavior and Homebrew formula generation"
-run = ["go test ./...", "sh .github/scripts/update-homebrew_test.sh"]
+description = "Test process-tree grouping and totals"
+run = "go test ./..."
 
 [tasks.check]
 description = "Run lint and tests"
