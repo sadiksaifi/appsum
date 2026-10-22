@@ -96,7 +96,7 @@ func Run(ctx context.Context) error {
 	cmd.Flags().BoolVar(&upgradeRequested, "upgrade", false, "Upgrade to the latest stable release with SHA-256 verification")
 	cmd.Flags().BoolVarP(&watch, "watch", "w", false, "Refresh in place; stream snapshots when piped")
 	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Print JSON; --watch emits newline-delimited JSON")
-	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show full names, executable paths, and command lines")
+	cmd.Flags().BoolVar(&verbose, "verbose", false, "Show full names, executable paths, and command lines")
 	cmd.Flags().DurationVar(&interval, "interval", time.Second, "CPU sampling interval")
 	cmd.Flags().IntVar(&depth, "depth", 0, "Limit displayed process depth; 0 shows every descendant (JSON is always complete)")
 	return fang.Execute(ctx, cmd, fang.WithVersion(currentVersion()), fang.WithNotifySignal(os.Interrupt, syscall.SIGTERM))
