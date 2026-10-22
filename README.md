@@ -44,7 +44,3 @@ Exact names take priority over partial matches. CPU 100% means one busy core. ma
 | `-h`, `--help` | — | Show usage and examples. |
 | `-v`, `--version` | — | Show the build version. |
 | `--upgrade` | Off | Upgrade through Homebrew for Homebrew installations; otherwise update this binary to the latest stable release with SHA-256 verification. |
-
-## Release setup
-
-To publish formula updates, add the Actions secret `HOMEBREW_TAP_PAT` to this repository. Use a fine-grained GitHub token restricted to `sadiksaifi/homebrew-tap` with "Contents: Read and write" permission. Releases update the tap's `main` branch directly.
