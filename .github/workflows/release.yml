@@ -32,7 +32,7 @@ jobs:
       - uses: jdx/mise-action@v5
         with:
           cache: true
-          install_args: go node npm:tagsmith goreleaser
+          install_args: go node npm:tagsmith goreleaser git-cliff
       # A retry can repair release tooling without moving the published tag.
       - name: Check out release source
         if: github.event_name == 'workflow_dispatch'
@@ -53,7 +53,9 @@ jobs:
             go-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('go.mod') }}-
       - name: Test
         run: mise run test
+      - name: Generate release notes
+        run: mise exec -- git-cliff --current > "$RUNNER_TEMP/release-notes.txt"
       - name: Publish release
-        run: mise exec -- goreleaser release --clean
+        run: mise exec -- goreleaser release --clean --release-notes "$RUNNER_TEMP/release-notes.txt"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

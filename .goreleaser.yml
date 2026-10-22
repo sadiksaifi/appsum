@@ -24,6 +24,3 @@ release:
   prerelease: false
   extra_files:
     - glob: ./install.sh
-
-changelog:
-  use: github-native
