@@ -12,7 +12,7 @@ See CPU and memory usage for apps and process trees, with a total followed by ev
 brew install sadiksaifi/tap/appsum
 ```
 
-### Shell installer
+### curl
 
 ```sh
 curl -fsSL https://github.com/sadiksaifi/appsum/releases/latest/download/install.sh | sh
