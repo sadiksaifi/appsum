@@ -18,7 +18,9 @@ fi
 
 formula=$tap/Formula/appsum.rb
 if [ -f "$formula" ]; then
-  current=$(awk -F '"' '/^  version / { print $2 }' "$formula")
+  current=$(awk -F '"' '/^  url / { print $2 }' "$formula")
+  current=${current##*/v}
+  current=${current%.tar.gz}
   if ! printf '%s\n' "$current" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
     echo "Cannot determine the current Homebrew formula version." >&2
     exit 1
@@ -37,7 +39,6 @@ class Appsum < Formula
   desc "CPU and memory usage for apps and process trees"
   homepage "https://github.com/sadiksaifi/appsum"
   url "https://github.com/sadiksaifi/appsum/archive/refs/tags/$tag.tar.gz"
-  version "$version"
   sha256 "$checksum"
 
   depends_on "go" => :build
